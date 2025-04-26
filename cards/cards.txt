@@ -1,0 +1,5 @@
+What is JVM?::Java Virtual Machine
+What is the keyword for inheritance in Java?::extends
+Which interface is used for functional programming in Java?::FunctionalInterface
+What does OOP stand for?::Object Oriented Programming
+What is the default value of int in Java?::0
