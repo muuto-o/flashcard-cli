@@ -82,7 +82,7 @@ public class App {
                     if (!newOrder.isEmpty()) {
                         order = newOrder;
                         organizer = getOrganizer(order);
-                        flashcardService = new FlashcardService(repo, organizer); // Update organizer
+                        flashcardService = new FlashcardService(repo, organizer);
                     }
 
                     System.out.print("Enter repetitions (current: " + repetitions + "): ");
@@ -95,9 +95,9 @@ public class App {
                     if (!newInvert.isEmpty())
                         invert = Boolean.parseBoolean(newInvert);
                 }
-                case "3" -> System.out.println("Add Flashcard (to be implemented)");
-                case "4" -> System.out.println("Delete Flashcard (to be implemented)");
-                case "5" -> System.out.println("Edit Flashcard (to be implemented)");
+                case "3" -> Cli.addFlashcardCLI(scanner, repo, file);
+                case "4" -> Cli.deleteFlashcardCLI(scanner, repo, file);
+                case "5" -> Cli.editFlashcardCLI(scanner, repo, file);
                 case "6" -> {
                     System.out.println("Exiting. Goodbye!");
                     return;
