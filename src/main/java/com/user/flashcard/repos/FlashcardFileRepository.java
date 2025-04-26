@@ -2,6 +2,7 @@ package com.user.flashcard.repos;
 
 import com.user.flashcard.models.Flashcard;
 import java.io.*;
+import java.time.LocalDateTime;
 import java.util.*;
 
 public class FlashcardFileRepository implements FlashcardRepository {
@@ -11,12 +12,16 @@ public class FlashcardFileRepository implements FlashcardRepository {
         try (BufferedReader reader = new BufferedReader(new FileReader(fileName))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                if (line.trim().isEmpty())
-                    continue;
                 String[] parts = line.split("::");
-                if (parts.length != 2)
-                    throw new RuntimeException("Invalid format: " + line);
-                cards.add(new Flashcard(parts[0].trim(), parts[1].trim()));
+                Flashcard card = new Flashcard(parts[0].trim(), parts[1].trim());
+                if (parts.length >= 4) {
+                    card.setMistakes(Integer.parseInt(parts[2].trim()));
+                    card.setCorrectAnswers(Integer.parseInt(parts[3].trim()));
+                    if (parts.length == 5 && !parts[4].trim().isEmpty()) {
+                        card.setLastMistakeTime(LocalDateTime.parse(parts[4].trim())); // 🔥 Load lastMistakeTime
+                    }
+                }
+                cards.add(card);
             }
         } catch (IOException e) {
             throw new RuntimeException("Failed to load flashcards: " + e.getMessage());
@@ -28,7 +33,10 @@ public class FlashcardFileRepository implements FlashcardRepository {
     public void saveFlashcards(List<Flashcard> cards, String fileName) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
             for (Flashcard card : cards) {
-                writer.write(card.getQuestion() + "::" + card.getAnswer());
+                String lastMistakeTimeStr = card.getLastMistakeTime() != null ? card.getLastMistakeTime().toString()
+                        : "";
+                writer.write(card.getQuestion() + "::" + card.getAnswer() + "::"
+                        + card.getMistakes() + "::" + card.getCorrectAnswers() + "::" + lastMistakeTimeStr);
                 writer.newLine();
             }
         } catch (IOException e) {

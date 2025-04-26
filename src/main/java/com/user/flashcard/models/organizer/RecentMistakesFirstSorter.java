@@ -6,14 +6,11 @@ import java.util.*;
 public class RecentMistakesFirstSorter implements CardOrganizer {
     @Override
     public List<Flashcard> organize(List<Flashcard> cards) {
-        List<Flashcard> sorted = new ArrayList<>(cards);
-        sorted.sort((a, b) -> {
-            if (a.getMistakes() > 0 && b.getMistakes() == 0)
-                return -1;
-            if (b.getMistakes() > 0 && a.getMistakes() == 0)
-                return 1;
-            return 0;
-        });
-        return sorted;
+        return cards.stream()
+                .sorted(Comparator.comparing(
+                        Flashcard::getLastMistakeTime,
+                        Comparator.nullsLast(Comparator.reverseOrder()) //
+                ))
+                .toList();
     }
 }

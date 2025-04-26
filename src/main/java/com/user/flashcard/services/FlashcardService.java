@@ -19,24 +19,40 @@ public class FlashcardService {
 
     public List<Flashcard> runSession(String fileName, int repetitions, boolean invert) {
         List<Flashcard> cards = repository.loadFlashcards(fileName);
-        List<Flashcard> organized = organizer.organize(cards);
+        cards = organizer.organize(cards);
 
-        for (Flashcard card : organized) {
-            int correctCount = 0;
-            while (correctCount < repetitions) {
-                System.out.println(invert ? card.getAnswer() : card.getQuestion());
-                String input = scanner.nextLine();
-                String expected = invert ? card.getQuestion() : card.getAnswer();
-                if (input.equalsIgnoreCase(expected)) {
-                    System.out.println("✅ Correct!");
+        for (Flashcard card : cards) {
+            System.out.println(card.getQuestion() + " : " + card.getLastMistakeTime());
+        }
+
+        Scanner scanner = new Scanner(System.in);
+        for (Flashcard card : cards) {
+            for (int i = 0; i < repetitions; i++) {
+                boolean correct = askQuestion(scanner, card, invert);
+                if (correct) {
                     card.recordCorrect();
-                    correctCount++;
                 } else {
-                    System.out.println("❌ Wrong! Correct answer: " + expected);
                     card.recordMistake();
                 }
             }
         }
-        return cards; // Return for achievements evaluation
+
+        repository.saveFlashcards(cards, fileName);
+        System.out.println("\ud83d\udcbe Flashcards saved with updated stats!");
+
+        return cards;
+    }
+
+    private boolean askQuestion(Scanner scanner, Flashcard card, boolean invert) {
+        System.out.println(invert ? card.getAnswer() : card.getQuestion());
+        String input = scanner.nextLine().trim();
+        String expected = invert ? card.getQuestion() : card.getAnswer();
+        if (input.equalsIgnoreCase(expected)) {
+            System.out.println("\u2705 Correct!");
+            return true;
+        } else {
+            System.out.println("\u274c Wrong! Correct answer: " + expected);
+            return false;
+        }
     }
 }
