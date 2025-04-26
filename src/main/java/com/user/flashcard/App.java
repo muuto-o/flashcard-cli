@@ -1,5 +1,6 @@
 package com.user.flashcard;
 
+import com.user.flashcard.cli.Cli;
 import com.user.flashcard.models.Flashcard;
 import com.user.flashcard.models.achievement.*;
 import com.user.flashcard.models.organizer.*;
@@ -48,163 +49,150 @@ public class App {
     // List<Flashcard> cards = flashcardService.runSession(file, reps, invert);
     // achievementService.evaluateAchievements(cards);
     // }
+    static Scanner scanner = new Scanner(System.in);
 
     public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-        FlashcardRepository repo = new FlashcardFileRepository();
         String file = "cards/cards.txt"; // Adjust your path
+        String order = "random";
+        int repetitions = 1;
+        boolean invert = false;
 
-        while (true) {
-            System.out.println("\n=== Flashcard System ===");
-            System.out.println("1. Start Quiz Session");
-            System.out.println("2. Add Flashcard");
-            System.out.println("3. Delete Flashcard");
-            System.out.println("4. Edit Flashcard");
-            System.out.println("5. Exit");
-            System.out.print("Choose an option: ");
-            String choice = scanner.nextLine();
-
-            switch (choice) {
-                case "1" -> runQuizSession(scanner, repo, file);
-                case "2" -> addFlashcardCLI(scanner, repo, file);
-                case "3" -> deleteFlashcardCLI(scanner, repo, file);
-                case "4" -> editFlashcardCLI(scanner, repo, file);
-                case "5" -> {
-                    System.out.println("Exiting. Goodbye!");
+        for (int i = 0; i < args.length; i++) {
+            switch (args[i]) {
+                case "--help" -> {
+                    Cli.printHelp();
                     return;
                 }
-                default -> System.out.println("Invalid choice. Try again.");
+                default -> {
+                    if (!args[i].startsWith("--")) {
+                        file = args[i];
+                    } else if (args[i].equals("--order") && i + 1 < args.length) {
+                        order = args[++i];
+                    } else if (args[i].equals("--repetitions") && i + 1 < args.length) {
+                        repetitions = Integer.parseInt(args[++i]);
+                    } else if (args[i].equals("--invertCards")) {
+                        invert = true;
+                    } else {
+                        System.out.println("❌ Unknown option: " + args[i]);
+                        Cli.printHelp();
+                        return;
+                    }
+                }
             }
         }
-    }
 
-    private static void runQuizSession(Scanner scanner, FlashcardRepository repo, String file) {
-        System.out.print("Choose order (random, worst-first, recent-mistakes-first): ");
-        String order = scanner.nextLine();
-        System.out.print("How many repetitions per card? ");
-        int reps = Integer.parseInt(scanner.nextLine());
-
-        CardOrganizer organizer = switch (order) {
-            case "worst-first" -> new WorstFirstSorter();
-            case "recent-mistakes-first" -> new RecentMistakesFirstSorter();
-            default -> new RandomSorter();
-        };
-
+        FlashcardRepository repo = new FlashcardFileRepository();
+        CardOrganizer organizer = getOrganizer(order);
         FlashcardService flashcardService = new FlashcardService(repo, organizer);
         AchievementService achievementService = new AchievementService(List.of(
                 new CorrectAchievement(),
                 new RepeatAchievement(),
                 new ConfidentAchievement()));
 
-        List<Flashcard> cards = flashcardService.runSession(file, reps, false);
-        achievementService.evaluateAchievements(cards);
-    }
+        while (true) {
+            System.out.println("\n=== Flashcard System ===");
+            System.out.println("Defaults: file=" + file + ", order=" + order + ", repetitions=" + repetitions
+                    + ", invert=" + invert);
+            System.out.println("1. Start Quiz Session");
+            System.out.println("2. Change Defaults");
+            System.out.println("3. Add Flashcard");
+            System.out.println("4. Delete Flashcard");
+            System.out.println("5. Edit Flashcard");
+            System.out.println("6. Exit");
+            System.out.print("Choose an option: ");
+            String choice = scanner.nextLine().trim();
 
-    private static void addFlashcardCLI(Scanner scanner, FlashcardRepository repo, String file) {
-        String question;
-        do {
-            System.out.print("Enter question: ");
-            question = scanner.nextLine().trim();
-            if (question.isEmpty())
-                System.out.println("❌ Question cannot be empty.");
-        } while (question.isEmpty());
-
-        String answer;
-        do {
-            System.out.print("Enter answer: ");
-            answer = scanner.nextLine().trim();
-            if (answer.isEmpty())
-                System.out.println("❌ Answer cannot be empty.");
-        } while (answer.isEmpty());
-
-        Flashcard newCard = new Flashcard(question, answer);
-        repo.addFlashcard(newCard, file);
-        System.out.println("✅ Flashcard added!");
-    }
-
-    private static void deleteFlashcardCLI(Scanner scanner, FlashcardRepository repo, String file) {
-        List<Flashcard> cards = repo.loadFlashcards(file);
-        if (cards.isEmpty()) {
-            System.out.println("❌ No flashcards available to delete.");
-            return;
-        }
-
-        System.out.println("\n📝 Flashcards:");
-        for (int i = 0; i < cards.size(); i++) {
-            System.out.println((i + 1) + ". " + cards.get(i).getQuestion() + " :: " + cards.get(i).getAnswer());
-        }
-
-        int index = -1;
-        do {
-            System.out.print("Enter the number of the flashcard to delete (0 to cancel): ");
-            String input = scanner.nextLine().trim();
-            try {
-                index = Integer.parseInt(input);
-                if (index < 0 || index > cards.size()) {
-                    System.out.println("❌ Invalid choice.");
+            switch (choice) {
+                case "1" -> {
+                    List<Flashcard> cards = flashcardService.runSession(file, repetitions, invert);
+                    achievementService.evaluateAchievements(cards);
                 }
-            } catch (NumberFormatException e) {
-                System.out.println("❌ Please enter a valid number.");
+                case "2" -> {
+                    System.out.print("Enter file path (current: " + file + "): ");
+                    String newFile = scanner.nextLine().trim();
+                    if (!newFile.isEmpty())
+                        file = newFile;
+
+                    System.out.print(
+                            "Enter order [random, worst-first, recent-mistakes-first] (current: " + order + "): ");
+                    String newOrder = scanner.nextLine().trim();
+                    if (!newOrder.isEmpty()) {
+                        order = newOrder;
+                        organizer = getOrganizer(order);
+                        flashcardService = new FlashcardService(repo, organizer); // Update organizer
+                    }
+
+                    System.out.print("Enter repetitions (current: " + repetitions + "): ");
+                    String newReps = scanner.nextLine().trim();
+                    if (!newReps.isEmpty())
+                        repetitions = Integer.parseInt(newReps);
+
+                    System.out.print("Invert cards? [true/false] (current: " + invert + "): ");
+                    String newInvert = scanner.nextLine().trim();
+                    if (!newInvert.isEmpty())
+                        invert = Boolean.parseBoolean(newInvert);
+                }
+                case "3" -> System.out.println("Add Flashcard (to be implemented)");
+                case "4" -> System.out.println("Delete Flashcard (to be implemented)");
+                case "5" -> System.out.println("Edit Flashcard (to be implemented)");
+                case "6" -> {
+                    System.out.println("Exiting. Goodbye!");
+                    return;
+                }
+                default -> System.out.println("❌ Invalid choice. Try again.");
             }
-        } while (index < 0 || index > cards.size());
-
-        if (index == 0) {
-            System.out.println("❌ Deletion cancelled.");
-            return;
         }
-
-        Flashcard cardToDelete = cards.get(index - 1);
-        repo.deleteFlashcard(cardToDelete, file);
-        System.out.println("✅ Flashcard deleted!");
     }
 
-    private static void editFlashcardCLI(Scanner scanner, FlashcardRepository repo, String file) {
-        List<Flashcard> cards = repo.loadFlashcards(file);
-        if (cards.isEmpty()) {
-            System.out.println("❌ No flashcards available to edit.");
-            return;
-        }
+    // while (true) {
+    // System.out.println("\n=== Flashcard System ===");
+    // System.out.println("1. Start Quiz Session");
+    // System.out.println("2. Add Flashcard");
+    // System.out.println("3. Delete Flashcard");
+    // System.out.println("4. Edit Flashcard");
+    // System.out.println("5. Exit");
+    // System.out.print("Choose an option: ");
+    // String choice = scanner.nextLine();
 
-        System.out.println("\n📝 Flashcards:");
-        for (int i = 0; i < cards.size(); i++) {
-            System.out.println((i + 1) + ". " + cards.get(i).getQuestion() + " :: " + cards.get(i).getAnswer());
-        }
+    // switch (choice) {
+    // // case "1" -> runQuizSession(scanner, repo, file);
+    // case "2" -> Cli.addFlashcardCLI(scanner, repo, file);
+    // case "3" -> Cli.deleteFlashcardCLI(scanner, repo, file);
+    // case "4" -> Cli.editFlashcardCLI(scanner, repo, file);
+    // case "5" -> {
+    // System.out.println("Exiting. Goodbye!");
+    // return;
+    // }
+    // default -> System.out.println("Invalid choice. Try again.");
+    // }
+    // }
+    // }
 
-        int index = -1;
-        do {
-            System.out.print("Enter the number of the flashcard to edit (0 to cancel): ");
-            String input = scanner.nextLine().trim();
-            try {
-                index = Integer.parseInt(input);
-                if (index < 0 || index > cards.size()) {
-                    System.out.println("❌ Invalid choice.");
-                }
-            } catch (NumberFormatException e) {
-                System.out.println("❌ Please enter a valid number.");
-            }
-        } while (index < 0 || index > cards.size());
+    // private static void runQuizSession(Scanner scanner, FlashcardRepository repo,
+    // String file) {
+    // System.out.print("Choose order (random, worst-first, recent-mistakes-first):
+    // ");
+    // String order = scanner.nextLine();
+    // System.out.print("How many repetitions per card? ");
+    // int reps = Integer.parseInt(scanner.nextLine());
 
-        if (index == 0) {
-            System.out.println("❌ Edit cancelled.");
-            return;
-        }
+    // FlashcardService flashcardService = new FlashcardService(repo, organizer);
+    // AchievementService achievementService = new AchievementService(List.of(
+    // new CorrectAchievement(),
+    // new RepeatAchievement(),
+    // new ConfidentAchievement()));
 
-        Flashcard cardToEdit = cards.get(index - 1);
+    // List<Flashcard> cards = flashcardService.runSession(file, reps, false);
+    // achievementService.evaluateAchievements(cards);
+    // }
 
-        System.out.print("Enter new question (leave blank to keep current): ");
-        String newQuestion = scanner.nextLine().trim();
-        if (!newQuestion.isEmpty()) {
-            cardToEdit.setQuestion(newQuestion);
-        }
+    private static CardOrganizer getOrganizer(String order) {
+        return switch (order) {
+            case "worst-first" -> new WorstFirstSorter();
+            case "recent-mistakes-first" -> new RecentMistakesFirstSorter();
+            default -> new RandomSorter();
+        };
 
-        System.out.print("Enter new answer (leave blank to keep current): ");
-        String newAnswer = scanner.nextLine().trim();
-        if (!newAnswer.isEmpty()) {
-            cardToEdit.setAnswer(newAnswer);
-        }
-
-        repo.saveFlashcards(cards, file);
-        System.out.println("✅ Flashcard updated!");
     }
 
 }
