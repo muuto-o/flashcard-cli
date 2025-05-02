@@ -19,15 +19,12 @@ public class FlashcardService {
 
     public List<Flashcard> runSession(String fileName, int repetitions, boolean invert) {
         List<Flashcard> cards = repository.loadFlashcards(fileName);
-        cards = organizer.organize(cards);
-
-        for (Flashcard card : cards) {
-            System.out.println(card.getQuestion() + " : " + card.getLastMistakeTime());
-        }
 
         Scanner scanner = new Scanner(System.in);
-        for (Flashcard card : cards) {
-            for (int i = 0; i < repetitions; i++) {
+        for (int i = 0; i < repetitions; i++) {
+            System.out.println("🌀 Round " + (i + 1) + "/" + repetitions);
+            cards = organizer.organize(cards);
+            for (Flashcard card : cards) {
                 boolean correct = askQuestion(scanner, card, invert);
                 if (correct) {
                     card.recordCorrect();
